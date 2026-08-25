@@ -1,11 +1,12 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useRef, useState } from "react";
+import { use, useRef, useState } from "react";
 
 export default function Home() {
   const socketRef = useRef<WebSocket | null>(null);
 
+  const [message, setMesage] = useState("");
   const [status, setStatus] = useState("Disconnected");
   const [response, setResponse] = useState("-");
 
@@ -34,7 +35,7 @@ export default function Home() {
     };
   };
 
-  const sendPing = () => {
+  const sendMessage = () => {
     const socket = socketRef.current;
 
     if (!socket) {
@@ -47,9 +48,9 @@ export default function Home() {
       return;
     }
 
-    socket.send("ping");
-
-    console.log("Sent: ping");
+    socket.send(message);
+    console.log("Sent: " + message);
+    setResponse(" ");
   };
 
   const disconnect = () => {
@@ -58,7 +59,7 @@ export default function Home() {
 
   return (
     <main>
-      <div>
+      <div className="flex flex-col gap-2 w-80 mx-auto my-10">
         <h1>WebSocket Demo</h1>
 
         <p>Status: {status}</p>
@@ -67,9 +68,13 @@ export default function Home() {
         <Button variant="default" onClick={connect}>
           Connect
         </Button>
-
-        <Button variant="default" onClick={sendPing}>
-          Send Ping
+        <input
+          type="text"
+          placeholder="Message"
+          onChange={(e) => setMesage(e.target.value)}
+        />
+        <Button variant="default" onClick={sendMessage}>
+          Send Message
         </Button>
 
         <Button variant="destructive" onClick={disconnect}>
