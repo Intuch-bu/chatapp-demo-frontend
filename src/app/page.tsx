@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useRef, useState } from "react";
 
 export default function Home() {
@@ -57,20 +58,24 @@ export default function Home() {
 
   return (
     <main>
-      <h1>WebSocket Demo</h1>
+      <div>
+        <h1>WebSocket Demo</h1>
 
-      <p>Status: {status}</p>
-      <p>Server response: {response}</p>
+        <p>Status: {status}</p>
+        <p>Server response: {response}</p>
 
-      <button onClick={connect}>Connect</button>
+        <Button variant="default" onClick={connect}>
+          Connect
+        </Button>
 
-      <button onClick={sendPing}>
-        Send Ping
-      </button>
+        <Button variant="default" onClick={sendPing}>
+          Send Ping
+        </Button>
 
-      <button onClick={disconnect}>
-        Disconnect
-      </button>
+        <Button variant="destructive" onClick={disconnect}>
+          Disconnect
+        </Button>
+      </div>
     </main>
   );
 }
