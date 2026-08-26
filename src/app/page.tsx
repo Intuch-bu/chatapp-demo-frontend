@@ -2,7 +2,21 @@
 
 import { io, Socket } from "socket.io-client";
 import { Button } from "@/components/ui/button";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+const SOCKET_URL =
+  process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:8080";
+
+function removeSocketListeners(socket: Socket) {
+  socket.off("connect");
+  socket.off("message:new");
+  socket.off("disconnect");
+}
+
+function closeSocket(socket: Socket) {
+  removeSocketListeners(socket);
+  socket.disconnect();
+}
 
 export default function Home() {
   const socketRef = useRef<Socket | null>(null);
@@ -11,8 +25,29 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [status, setStatus] = useState("Disconnected");
 
+  useEffect(() => {
+    return () => {
+      const socket = socketRef.current;
+
+      if (socket) {
+        closeSocket(socket);
+        socketRef.current = null;
+      }
+    };
+  }, []);
+
   const connect = () => {
-    const socket = io("http://localhost:8080");
+    const existingSocket = socketRef.current;
+
+    if (existingSocket) {
+      if (!existingSocket.connected) {
+        existingSocket.connect();
+      }
+
+      return;
+    }
+
+    const socket = io(SOCKET_URL);
 
     socketRef.current = socket;
 
@@ -21,33 +56,47 @@ export default function Home() {
       setStatus("Connected");
     })
 
-    socket.on("message:new", (data) => {
+    socket.on("message:new", (data: { content: string }) => {
       console.log("Received:", data);
       setMessages((prev) => [...prev, data.content]);
     });
 
     socket.on("disconnect", () => {
       console.log("Disconnected");
+
+      removeSocketListeners(socket);
+      socket.disconnect();
+
+      if (socketRef.current === socket) {
+        socketRef.current = null;
+      }
+
       setStatus("Disconnected");
-    })
+    });
   };
 
   const sendMessage = () => {
     const socket = socketRef.current;
 
-    if (!socket) return;
+    if (!socket?.connected) return;
 
-    if(!input.trim()) return;
+    if (!input.trim()) return;
 
     socket.emit("message:send", {
       content: input,
-    })
+    });
 
     setInput("");
   };
 
   const disconnect = () => {
-    socketRef.current?.disconnect();
+    const socket = socketRef.current;
+
+    if (!socket) return;
+
+    closeSocket(socket);
+    socketRef.current = null;
+    setStatus("Disconnected");
   };
 
   return (
@@ -83,4 +132,4 @@ export default function Home() {
         ))}
       </main>
     );
-  }
+}
