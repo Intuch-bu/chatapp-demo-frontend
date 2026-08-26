@@ -39,6 +39,10 @@ export default function Home() {
       console.log("Connected:", socket.id);
       setStatus("Connected as Admin");
     });
+
+    socket.on("message:new", (data) => {
+      console.log("New message:", data);
+    });
   };
 
   const sendMessage = () => {
