@@ -1,86 +1,50 @@
 "use client";
 
 import { io, Socket } from "socket.io-client";
-import { Button } from "@/components/ui/button";
-import { useEffect, useRef, useState } from "react";
-
-const SOCKET_URL =
-  process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:8080";
-
-function removeSocketListeners(socket: Socket) {
-  socket.off("connect");
-  socket.off("message:new");
-  socket.off("disconnect");
-}
-
-function closeSocket(socket: Socket) {
-  removeSocketListeners(socket);
-  socket.disconnect();
-}
+import { useRef, useState } from "react";
 
 export default function Home() {
   const socketRef = useRef<Socket | null>(null);
 
-  const [messages, setMessages] = useState<Array<string>>([]);
   const [input, setInput] = useState("");
   const [status, setStatus] = useState("Disconnected");
 
-  useEffect(() => {
-    return () => {
-      const socket = socketRef.current;
-
-      if (socket) {
-        closeSocket(socket);
-        socketRef.current = null;
-      }
-    };
-  }, []);
-
-  const connect = () => {
-    const existingSocket = socketRef.current;
-
-    if (existingSocket) {
-      if (!existingSocket.connected) {
-        existingSocket.connect();
-      }
-
-      return;
-    }
-
-    const socket = io(SOCKET_URL);
+  const connectAsUser = () => {
+    const socket = io("http://localhost:8080", {
+      auth: {
+        userId: 1,
+        role: "user",
+      },
+    });
 
     socketRef.current = socket;
 
-    socket.on('connect', () => {
+    socket.on("connect", () => {
       console.log("Connected:", socket.id);
-      setStatus("Connected");
-    })
+      setStatus("Connected as User");
+    });
+  };
 
-    socket.on("message:new", (data: { content: string }) => {
-      console.log("Received:", data);
-      setMessages((prev) => [...prev, data.content]);
+  const connectAsAdmin = () => {
+    const socket = io("http://localhost:8080", {
+      auth: {
+        userId: 2,
+        role: "admin",
+      },
     });
 
-    socket.on("disconnect", () => {
-      console.log("Disconnected");
+    socketRef.current = socket;
 
-      removeSocketListeners(socket);
-      socket.disconnect();
-
-      if (socketRef.current === socket) {
-        socketRef.current = null;
-      }
-
-      setStatus("Disconnected");
+    socket.on("connect", () => {
+      console.log("Connected:", socket.id);
+      setStatus("Connected as Admin");
     });
   };
 
   const sendMessage = () => {
     const socket = socketRef.current;
 
-    if (!socket?.connected) return;
-
-    if (!input.trim()) return;
+    if (!socket) return;
 
     socket.emit("message:send", {
       content: input,
@@ -89,47 +53,19 @@ export default function Home() {
     setInput("");
   };
 
-  const disconnect = () => {
-    const socket = socketRef.current;
-
-    if (!socket) return;
-
-    closeSocket(socket);
-    socketRef.current = null;
-    setStatus("Disconnected");
-  };
-
   return (
-      <main>
-        <h1>Socket.IO Demo</h1>
+    <main>
+      <h1>Phase 4</h1>
 
-        <p>Status: {status}</p>
+      <p>{status}</p>
 
-        <Button onClick={connect}>
-          Connect
-        </Button>
+      <button onClick={connectAsUser}>Connect as User</button>
 
-        <Button onClick={disconnect}>
-          Disconnect
-        </Button>
+      <button onClick={connectAsAdmin}>Connect as Admin</button>
+      <input type="text" value={input} onChange={(e) => setInput(e.target.value)} />
 
-        <hr />
+      <button onClick={sendMessage}>Send</button>
 
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Message"
-        />
-
-        <Button onClick={sendMessage}>
-          Send
-        </Button>
-
-        <hr />
-
-        {messages.map((message, index) => (
-          <p key={index}>{message}</p>
-        ))}
-      </main>
-    );
+    </main>
+  );
 }
