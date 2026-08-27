@@ -9,19 +9,49 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [status, setStatus] = useState("Disconnected");
 
-  const connectAsUser = () => {
+  const listenForMessages = (socket: Socket) => {
+    socket.on("message:new", (data) => {
+      console.log("New message:", data);
+    });
+
+    socket.on("message:error", (data) => {
+      console.error("Message error:", data.message);
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("Connection error:", error.message);
+    });
+  };
+  const conversationJoined = (socket: Socket) => {
+    socket.on("conversation:joined", (data) => {
+      console.log("Joined conversation:", data.conversationId);
+    });
+  };
+  const conversationJoinedError = (socket: Socket) => {
+    socket.on("conversation:error", (data) => {
+      console.error("Conversation error:", data.message);
+    });
+  };
+
+  const connectAsUser = (userId: number) => {
     const socket = io("http://localhost:8080", {
       auth: {
-        userId: 1,
-        role: "user",
+        userId: userId,
       },
     });
 
     socketRef.current = socket;
+    listenForMessages(socket);
+    conversationJoined(socket);
+    conversationJoinedError(socket);
 
     socket.on("connect", () => {
       console.log("Connected:", socket.id);
       setStatus("Connected as User");
+    });
+
+    socket.emit("conversation:join", {
+      conversationId: 1,
     });
   };
 
@@ -29,19 +59,27 @@ export default function Home() {
     const socket = io("http://localhost:8080", {
       auth: {
         userId: 2,
-        role: "admin",
       },
     });
 
     socketRef.current = socket;
+    listenForMessages(socket);
+    conversationJoined(socket);
+    conversationJoinedError(socket);
 
     socket.on("connect", () => {
       console.log("Connected:", socket.id);
       setStatus("Connected as Admin");
     });
+  };
 
-    socket.on("message:new", (data) => {
-      console.log("New message:", data);
+  const joinConversation = () => {
+    const socket = socketRef.current;
+
+    if (!socket) return;
+
+    socket.emit("conversation:join", {
+      conversationId: 1,
     });
   };
 
@@ -51,6 +89,7 @@ export default function Home() {
     if (!socket) return;
 
     socket.emit("message:send", {
+      conversationId: 1,
       content: input,
     });
 
@@ -63,13 +102,18 @@ export default function Home() {
 
       <p>{status}</p>
 
-      <button onClick={connectAsUser}>Connect as User</button>
+      <button onClick={() => connectAsUser(1)}>Connect as User1</button>
+      <button onClick={() => connectAsUser(3)}>Connect as User3</button>
 
       <button onClick={connectAsAdmin}>Connect as Admin</button>
-      <input type="text" value={input} onChange={(e) => setInput(e.target.value)} />
+      <input
+        type="text"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+      />
 
       <button onClick={sendMessage}>Send</button>
-
+      <button onClick={joinConversation}>Join Conversation</button>
     </main>
   );
 }
